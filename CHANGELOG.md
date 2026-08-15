@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-08-15 (post-v0.1.0)
+
+### Feature
+
+Operability endpoints for automation: the LXC install script, Docker
+operators, and monitoring can now verify the service over plain HTTP
+without touching the mTLS LocalSend port. `GET /api/health` reports
+liveness plus version/identity; `GET /api/selftest` runs per-subsystem
+checks (share roots, LocalSend port self-dial, multicast listener) and
+returns 503 with per-check error strings on failure, so
+`curl -sf …/api/selftest` works as an install gate.
+
+- feat: /api/health + /api/selftest operability endpoints (`ab3bce6`)
+
 ## 2026-08-15
 
 ### Feature
