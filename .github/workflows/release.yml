@@ -1,0 +1,44 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64] # tokens must match scripts repo get_system_arch
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build and pack
+        env:
+          GOOS: linux
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: 0
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          ver="${TAG#v}"
+          out="localsend-nas_${ver}_linux_${GOARCH}"
+          mkdir -p "$out"
+          go build -trimpath -ldflags "-s -w -X main.version=${TAG}" -o "$out/localsend-nas" ./cmd/localsend-nas
+          cp LICENSE README.md "$out/"
+          tar -czf "$out.tar.gz" "$out"
+          sha256sum "$out.tar.gz" > "$out.tar.gz.sha256"
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            *.tar.gz
+            *.tar.gz.sha256
+          generate_release_notes: true
