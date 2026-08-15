@@ -257,6 +257,8 @@ func mimeByExt(p string) string {
 		return "text/css; charset=utf-8"
 	case strings.HasSuffix(p, ".js"):
 		return "text/javascript; charset=utf-8"
+	case strings.HasSuffix(p, ".png"):
+		return "image/png"
 	}
 	return ""
 }
