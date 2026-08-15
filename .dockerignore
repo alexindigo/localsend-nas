@@ -1,0 +1,6 @@
+.git
+.github
+/localsend-nas
+.envrc
+*.md
+!README.md

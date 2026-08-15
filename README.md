@@ -14,6 +14,29 @@ Incoming transfers are politely declined (`403`): this node is send-only.
 
 Single static Go binary, no runtime dependencies, embedded web UI.
 
+## Running
+
+Binary (see [releases](https://github.com/alexindigo/localsend-nas/releases)):
+
+```bash
+localsend-nas --listen :80 --share movies=/srv/movies --share books=/srv/books
+```
+
+Docker (`ghcr.io/alexindigo/localsend-nas`):
+
+```bash
+docker run -d --name localsend-nas --network host \
+  -v /srv/movies:/srv/movies:ro -v /srv/books:/srv/books:ro \
+  -v localsend-nas-data:/data \
+  -e LOCALSEND_NAS_SHARES="movies=/srv/movies,books=/srv/books" \
+  ghcr.io/alexindigo/localsend-nas:latest
+```
+
+`--network host` is recommended: LocalSend discovery rides multicast UDP
+53317, which NAT/bridge networking breaks. All flags have
+`LOCALSEND_NAS_*` env equivalents (`--listen` → `LOCALSEND_NAS_LISTEN`,
+repeatable `--share` → comma-separated `LOCALSEND_NAS_SHARES`, …).
+
 ## Status
 
 Early development. See the commit history and the plan document for scope.
