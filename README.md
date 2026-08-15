@@ -37,6 +37,15 @@ docker run -d --name localsend-nas --network host \
 `LOCALSEND_NAS_*` env equivalents (`--listen` → `LOCALSEND_NAS_LISTEN`,
 repeatable `--share` → comma-separated `LOCALSEND_NAS_SHARES`, …).
 
+## Operability (for scripts and monitoring)
+
+- `GET /api/health` — liveness + identity: `{"version","protocol","alias","fingerprint","lsPort"}`.
+  Always 200 when the process serves HTTP.
+- `GET /api/selftest` — subsystem diagnostics: share roots re-stat'd,
+  LocalSend port self-dial, multicast listener state, known-device count.
+  `200 {"ok":true,…}` when healthy, `503` with per-check error strings
+  otherwise — so `curl -sf …/api/selftest` works as an install gate.
+
 ## Status
 
 Early development. See the commit history and the plan document for scope.

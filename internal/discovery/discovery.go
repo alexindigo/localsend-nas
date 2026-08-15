@@ -17,6 +17,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/alexindigo/localsend-nas/internal/localsend"
@@ -52,6 +53,8 @@ type Discovery struct {
 	devices map[string]*Device // fingerprint → device
 
 	targetsPath string
+
+	listening atomic.Bool // joined ≥1 multicast interface
 }
 
 // New builds a Discovery. info is our own Info DTO (announce:false is set
@@ -73,6 +76,9 @@ func (d *Discovery) Start(ctx context.Context) {
 	go d.listenLoop(ctx)
 	go d.janitorLoop(ctx)
 }
+
+// Listening reports whether the multicast listener joined any interface.
+func (d *Discovery) Listening() bool { return d.listening.Load() }
 
 // Get resolves a fingerprint to a known device.
 func (d *Discovery) Get(fingerprint string) (Device, bool) {
@@ -253,6 +259,8 @@ func (d *Discovery) listenLoop(ctx context.Context) {
 	}
 	if joined == 0 {
 		d.log.Warn("no multicast-capable interface; not listening for announcements")
+	} else {
+		d.listening.Store(true)
 	}
 	// Socket reads poll with deadlines, so ctx cancellation is observed
 	// without closing sockets here.

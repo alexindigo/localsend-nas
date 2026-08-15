@@ -7,28 +7,35 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/alexindigo/localsend-nas/internal/config"
 	"github.com/alexindigo/localsend-nas/internal/discovery"
+	"github.com/alexindigo/localsend-nas/internal/localsend"
 	"github.com/alexindigo/localsend-nas/internal/shares"
 	"github.com/alexindigo/localsend-nas/internal/transfer"
 	"github.com/alexindigo/localsend-nas/web"
 )
 
 type API struct {
-	cfg   *config.Config
-	store *shares.Store
-	disc  *discovery.Discovery
-	tm    *transfer.Manager
+	cfg     *config.Config
+	store   *shares.Store
+	disc    *discovery.Discovery
+	tm      *transfer.Manager
+	info    localsend.Info
+	version string
 }
 
 // Handler builds the HTTP handler: /api/* routes plus the embedded SPA.
-func New(cfg *config.Config, store *shares.Store, disc *discovery.Discovery, tm *transfer.Manager) http.Handler {
-	a := &API{cfg: cfg, store: store, disc: disc, tm: tm}
+func New(cfg *config.Config, store *shares.Store, disc *discovery.Discovery, tm *transfer.Manager, info localsend.Info, version string) http.Handler {
+	a := &API{cfg: cfg, store: store, disc: disc, tm: tm, info: info, version: version}
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/health", a.handleHealth)
+	mux.HandleFunc("GET /api/selftest", a.handleSelftest)
 	mux.HandleFunc("GET /api/shares", a.handleShares)
 	mux.HandleFunc("GET /api/list", a.handleList)
 	mux.HandleFunc("GET /api/devices", a.handleDevices)
@@ -40,6 +47,81 @@ func New(cfg *config.Config, store *shares.Store, disc *discovery.Discovery, tm 
 	mux.HandleFunc("POST /api/transfers/{id}/cancel", a.handleCancelTransfer)
 	mux.HandleFunc("GET /", a.handleSPA)
 	return mux
+}
+
+// --- operability ---
+
+// handleHealth: liveness + identity. Always 200 when the process serves.
+func (a *API) handleHealth(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{
+		"version":     a.version,
+		"protocol":    localsend.ProtocolVersion,
+		"alias":       a.info.Alias,
+		"fingerprint": a.info.Fingerprint,
+		"lsPort":      a.cfg.LSPort,
+	})
+}
+
+// handleSelftest: per-subsystem diagnostics for install scripts and
+// operators. 200 when all checks pass, 503 with per-check errors otherwise.
+func (a *API) handleSelftest(w http.ResponseWriter, r *http.Request) {
+	type check struct {
+		OK    bool   `json:"ok"`
+		Error string `json:"error,omitempty"`
+	}
+	out := map[string]any{"checks": map[string]check{}}
+	checks := out["checks"].(map[string]check)
+	ok := true
+
+	// Shares: re-stat each configured root (mount dropped? permissions lost?)
+	shareErrs := map[string]string{}
+	for _, name := range a.store.Names() {
+		p, _ := a.store.Path(name)
+		fi, err := os.Stat(p)
+		if err != nil {
+			shareErrs[name] = err.Error()
+		} else if !fi.IsDir() {
+			shareErrs[name] = "not a directory"
+		}
+	}
+	if len(shareErrs) > 0 {
+		ok = false
+		msgs := make([]string, 0, len(shareErrs))
+		for name, e := range shareErrs {
+			msgs = append(msgs, name+": "+e)
+		}
+		checks["shares"] = check{OK: false, Error: strings.Join(msgs, "; ")}
+	} else {
+		checks["shares"] = check{OK: true}
+	}
+
+	// LocalSend port: self-dial the reject server.
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", a.cfg.LSPort), 2*time.Second)
+	if err != nil {
+		ok = false
+		checks["lsPort"] = check{OK: false, Error: err.Error()}
+	} else {
+		conn.Close()
+		checks["lsPort"] = check{OK: true}
+	}
+
+	// Multicast listener joined ≥1 interface.
+	if !a.disc.Listening() {
+		ok = false
+		checks["multicast"] = check{OK: false, Error: "no multicast-capable interface joined"}
+	} else {
+		checks["multicast"] = check{OK: true}
+	}
+
+	// Informational: known device count (never fails).
+	checks["devices"] = check{OK: true, Error: fmt.Sprintf("%d known", len(a.disc.Snapshot()))}
+
+	out["ok"] = ok
+	if !ok {
+		writeJSON(w, http.StatusServiceUnavailable, out)
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 // --- shares ---

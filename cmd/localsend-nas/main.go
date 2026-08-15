@@ -65,7 +65,7 @@ func main() {
 	reject := rejectserver.New(cfg.LSPort, id, info, disc)
 	tm := transfer.New(store, disc, client, info, log)
 
-	webSrv := &http.Server{Addr: cfg.Listen, Handler: httpapi.New(cfg, store, disc, tm)}
+	webSrv := &http.Server{Addr: cfg.Listen, Handler: httpapi.New(cfg, store, disc, tm, info, version)}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
