@@ -1,5 +1,7 @@
 # localsend-nas
 
+<img src="web/logo.png" alt="localsend-nas logo" width="128" align="right">
+
 Send-only [LocalSend](https://localsend.org) node with a web UI, built for
 NAS-style deployments: browse host-mounted share directories in a browser,
 assemble a basket of files, pick a discovered device, and the server sends the
@@ -15,6 +17,9 @@ Single static Go binary, no runtime dependencies, embedded web UI.
 ## Status
 
 Early development. See the commit history and the plan document for scope.
+
+Logo: `web/logo.svg` (source) / `web/logo.png` (rendered) — original artwork
+for this project, LGPL-3.0 like the rest.
 
 ## License
 
