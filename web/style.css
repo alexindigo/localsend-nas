@@ -9,6 +9,17 @@
   --ok: #2e7d32;
 }
 
+html.dark {
+  --bg: #161a22;
+  --fg: #d3d9e3;
+  --muted: #8a93a5;
+  --card: #1f2630;
+  --line: #333c4d;
+  --accent: #5b9bf5;
+  --error: #ef5350;
+  --ok: #66bb6a;
+}
+
 * { box-sizing: border-box; }
 
 body {
@@ -28,6 +39,16 @@ header {
 }
 
 h1 { font-size: 1.1rem; margin: 0; }
+
+#themeToggle {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  color: var(--fg);
+  padding: 0.2rem 0.6rem;
+  line-height: 1.2;
+}
 
 nav button {
   border: 0;

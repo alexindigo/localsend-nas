@@ -3,7 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f6f7f9">
 <title>localsend-nas</title>
+<script>
+// Anti-FOUC: apply the persisted/system theme before first paint.
+// Mirrors initTheme() in app.js — keep both in sync.
+(function(){try{
+  var t=localStorage.getItem("localsend-nas-theme")||"system";
+  var d=t==="dark"||(t==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches);
+  var r=document.documentElement;
+  if(d){r.classList.add("dark");}
+  r.style.colorScheme=d?"dark":"light";
+  var m=document.querySelector('meta[name="theme-color"]');
+  if(m){m.content=d?"#161a22":"#f6f7f9";}
+}catch(e){}})();
+</script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,6 +28,7 @@
     <button data-tab="devices">Devices</button>
     <button data-tab="transfers">Transfers<span id="transferBadge"></span></button>
   </nav>
+  <button id="themeToggle" title="Theme: system">🖥</button>
 </header>
 
 <main>

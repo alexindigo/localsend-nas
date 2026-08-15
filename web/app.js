@@ -48,6 +48,49 @@ async function api(method, url, body) {
   return data;
 }
 
+// --- theme: system default + persisted manual override ----------------------
+// Same method as globnotes' theme engine: stored id ("system"|"light"|"dark"),
+// "system" resolves via prefers-color-scheme, OS changes re-apply live while
+// in system mode. (The anti-FOUC inline script in index.html mirrors this.)
+
+const THEME_KEY = "localsend-nas-theme";
+const THEME_ORDER = ["system", "light", "dark"];
+const THEME_ICONS = { system: "🖥", light: "☀️", dark: "🌙" };
+
+function currentThemeId() {
+  return localStorage.getItem(THEME_KEY) || "system";
+}
+
+function themeIsDark(id) {
+  return id === "dark" || (id === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+}
+
+function applyTheme(id) {
+  const dark = themeIsDark(id);
+  const root = document.documentElement;
+  root.classList.toggle("dark", dark);            // html.dark drives CSS vars
+  root.style.colorScheme = dark ? "dark" : "light"; // native widgets/scrollbars
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = dark ? "#161a22" : "#f6f7f9";
+  const btn = $("#themeToggle");
+  if (btn) {
+    btn.textContent = THEME_ICONS[id];
+    btn.title = `Theme: ${id} (click to change)`;
+  }
+}
+
+function initTheme() {
+  applyTheme(currentThemeId());
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (currentThemeId() === "system") applyTheme("system");
+  });
+  $("#themeToggle").addEventListener("click", () => {
+    const next = THEME_ORDER[(THEME_ORDER.indexOf(currentThemeId()) + 1) % THEME_ORDER.length];
+    localStorage.setItem(THEME_KEY, next);
+    applyTheme(next);
+  });
+}
+
 // --- state ------------------------------------------------------------------
 
 const state = {
@@ -315,6 +358,7 @@ function renderTransfers() {
 // --- boot -------------------------------------------------------------------
 
 (async function boot() {
+  initTheme();
   renderBasketBar();
   try {
     await loadShares();
