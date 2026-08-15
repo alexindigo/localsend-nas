@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/scripts-underground/localsend-nas/internal/localsend"
+	"github.com/alexindigo/localsend-nas/internal/localsend"
 )
 
 func testLogger() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }

@@ -93,8 +93,8 @@ func generate() (tls.Certificate, error) {
 		Subject:      pkix.Name{CommonName: "localsend-nas"},
 		NotBefore:    time.Now().Add(-time.Hour),
 		NotAfter:     time.Now().Add(10 * 365 * 24 * time.Hour), // long-lived; clients skip verify
-		KeyUsage:    x509.KeyUsageDigitalSignature,
-		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 		// ClientAuth is required: since protocol v2.1, receivers demand a
 		// client certificate and reject ServerAuth-only certs.
 		// SANs deliberately omitted: LocalSend clients use InsecureSkipVerify

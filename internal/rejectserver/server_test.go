@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/scripts-underground/localsend-nas/internal/identity"
-	"github.com/scripts-underground/localsend-nas/internal/localsend"
+	"github.com/alexindigo/localsend-nas/internal/identity"
+	"github.com/alexindigo/localsend-nas/internal/localsend"
 )
 
 type fakeRegistry struct{ got localsend.Info }

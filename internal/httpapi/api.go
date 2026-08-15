@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/scripts-underground/localsend-nas/internal/config"
-	"github.com/scripts-underground/localsend-nas/internal/discovery"
-	"github.com/scripts-underground/localsend-nas/internal/shares"
-	"github.com/scripts-underground/localsend-nas/internal/transfer"
-	"github.com/scripts-underground/localsend-nas/web"
+	"github.com/alexindigo/localsend-nas/internal/config"
+	"github.com/alexindigo/localsend-nas/internal/discovery"
+	"github.com/alexindigo/localsend-nas/internal/shares"
+	"github.com/alexindigo/localsend-nas/internal/transfer"
+	"github.com/alexindigo/localsend-nas/web"
 )
 
 type API struct {

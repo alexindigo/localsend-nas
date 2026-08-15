@@ -19,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/scripts-underground/localsend-nas/internal/localsend"
+	"github.com/alexindigo/localsend-nas/internal/localsend"
 )
 
 const (

@@ -11,14 +11,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/scripts-underground/localsend-nas/internal/config"
-	"github.com/scripts-underground/localsend-nas/internal/discovery"
-	"github.com/scripts-underground/localsend-nas/internal/httpapi"
-	"github.com/scripts-underground/localsend-nas/internal/identity"
-	"github.com/scripts-underground/localsend-nas/internal/localsend"
-	"github.com/scripts-underground/localsend-nas/internal/rejectserver"
-	"github.com/scripts-underground/localsend-nas/internal/shares"
-	"github.com/scripts-underground/localsend-nas/internal/transfer"
+	"github.com/alexindigo/localsend-nas/internal/config"
+	"github.com/alexindigo/localsend-nas/internal/discovery"
+	"github.com/alexindigo/localsend-nas/internal/httpapi"
+	"github.com/alexindigo/localsend-nas/internal/identity"
+	"github.com/alexindigo/localsend-nas/internal/localsend"
+	"github.com/alexindigo/localsend-nas/internal/rejectserver"
+	"github.com/alexindigo/localsend-nas/internal/shares"
+	"github.com/alexindigo/localsend-nas/internal/transfer"
 )
 
 // version is stamped by release builds via -X main.version=...

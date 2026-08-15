@@ -11,8 +11,8 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/scripts-underground/localsend-nas/internal/identity"
-	"github.com/scripts-underground/localsend-nas/internal/localsend"
+	"github.com/alexindigo/localsend-nas/internal/identity"
+	"github.com/alexindigo/localsend-nas/internal/localsend"
 )
 
 // Registry records peers that register with us.

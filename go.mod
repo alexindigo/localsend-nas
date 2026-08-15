@@ -1,3 +1,3 @@
-module github.com/scripts-underground/localsend-nas
+module github.com/alexindigo/localsend-nas
 
 go 1.26.5

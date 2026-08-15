@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/scripts-underground/localsend-nas/internal/discovery"
-	"github.com/scripts-underground/localsend-nas/internal/localsend"
-	"github.com/scripts-underground/localsend-nas/internal/shares"
+	"github.com/alexindigo/localsend-nas/internal/discovery"
+	"github.com/alexindigo/localsend-nas/internal/localsend"
+	"github.com/alexindigo/localsend-nas/internal/shares"
 )
 
 func testStore(t *testing.T) *shares.Store {
