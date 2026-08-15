@@ -1,0 +1,5 @@
+/localsend-nas
+*.test
+.envrc
+token
+*.local.toml
