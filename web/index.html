@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>localsend-nas</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>localsend-nas</h1>
+  <nav id="tabs">
+    <button data-tab="files" class="active">Files</button>
+    <button data-tab="devices">Devices</button>
+    <button data-tab="transfers">Transfers<span id="transferBadge"></span></button>
+  </nav>
+</header>
+
+<main>
+  <section id="tab-files">
+    <div class="toolbar">
+      <label>Share <select id="shareSelect"></select></label>
+      <span id="breadcrumb"></span>
+    </div>
+    <table id="fileList">
+      <thead><tr><th class="check"></th><th>Name</th><th class="num">Size</th><th>Modified</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div id="basketBar">
+      <span id="basketInfo">Basket empty</span>
+      <span class="spacer"></span>
+      <button id="clearBasket" class="secondary">Clear</button>
+      <button id="chooseDevice">Choose device →</button>
+    </div>
+  </section>
+
+  <section id="tab-devices" hidden>
+    <div class="toolbar">
+      <input id="addrInput" type="text" placeholder="Add device by IP[:port]" spellcheck="false">
+      <button id="addDevice">Add</button>
+      <button id="refreshDevices" class="secondary">Refresh</button>
+    </div>
+    <ul id="deviceList" class="cards"></ul>
+  </section>
+
+  <section id="tab-transfers" hidden>
+    <ul id="transferList" class="cards"></ul>
+  </section>
+</main>
+
+<div id="toast" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>
