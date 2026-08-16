@@ -55,7 +55,17 @@ async function api(method, url, body) {
 
 const THEME_KEY = "localsend-nas-theme";
 const THEME_ORDER = ["system", "light", "dark"];
-const THEME_ICONS = { system: "🖥", light: "☀️", dark: "🌙" };
+const THEME_ICONS = { light: "☀️", dark: "🌙" };
+
+// "system" mode shows the actual device class: phone on coarse pointers
+// (touch), desktop otherwise.
+function systemIcon() {
+  return window.matchMedia("(pointer: coarse)").matches ? "📱" : "🖥";
+}
+
+function themeIcon(id) {
+  return id === "system" ? systemIcon() : THEME_ICONS[id];
+}
 
 function currentThemeId() {
   return localStorage.getItem(THEME_KEY) || "system";
@@ -74,7 +84,7 @@ function applyTheme(id) {
   if (meta) meta.content = dark ? "#161a22" : "#f6f7f9";
   const btn = $("#themeToggle");
   if (btn) {
-    btn.textContent = THEME_ICONS[id];
+    btn.textContent = themeIcon(id);
     btn.title = `Theme: ${id} (click to change)`;
   }
 }
