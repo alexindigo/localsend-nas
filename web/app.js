@@ -55,16 +55,23 @@ async function api(method, url, body) {
 
 const THEME_KEY = "localsend-nas-theme";
 const THEME_ORDER = ["system", "light", "dark"];
-const THEME_ICONS = { light: "☀️", dark: "🌙" };
+
+// Inline SVG icons: emoji codepoints without VS16 render as ambiguous
+// monochrome fallback glyphs on Linux (e.g. bare U+1F5A5 looks like a
+// phone). SVGs are deterministic everywhere and follow currentColor.
+const SVG = (inner) =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+const ICON_MONITOR = SVG('<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>');
+const ICON_PHONE = SVG('<rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>');
+const ICON_SUN = SVG('<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/>');
+const ICON_MOON = SVG('<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>');
 
 // "system" mode shows the actual device class: phone on coarse pointers
-// (touch), desktop otherwise.
-function systemIcon() {
-  return window.matchMedia("(pointer: coarse)").matches ? "📱" : "🖥";
-}
-
+// (touch), monitor otherwise.
 function themeIcon(id) {
-  return id === "system" ? systemIcon() : THEME_ICONS[id];
+  if (id === "light") return ICON_SUN;
+  if (id === "dark") return ICON_MOON;
+  return window.matchMedia("(pointer: coarse)").matches ? ICON_PHONE : ICON_MONITOR;
 }
 
 function currentThemeId() {
@@ -84,7 +91,7 @@ function applyTheme(id) {
   if (meta) meta.content = dark ? "#161a22" : "#f6f7f9";
   const btn = $("#themeToggle");
   if (btn) {
-    btn.textContent = themeIcon(id);
+    btn.innerHTML = themeIcon(id); // static icon markup only, never user data
     btn.title = `Theme: ${id} (click to change)`;
   }
 }
@@ -230,7 +237,9 @@ $("#chooseDevice").addEventListener("click", () => {
 
 // --- devices ----------------------------------------------------------------
 
-const TYPE_ICONS = { mobile: "📱", desktop: "💻", web: "🌐", headless: "🖥", server: "🗄" };
+// Emoji with default emoji presentation only — ambiguous codepoints
+// (🖥 U+1F5A5, 🗄 U+1F5C4) get VS16 to force the emoji font on Linux.
+const TYPE_ICONS = { mobile: "📱", desktop: "💻", web: "🌐", headless: "🖥️", server: "🗄️" };
 
 async function loadDevices() {
   state.devices = await api("GET", "/api/devices");

@@ -64,9 +64,10 @@ h1 { font-size: 1.1rem; margin: 0; font-weight: 600; }
   border: 1px solid var(--line);
   border-radius: 20px;
   color: var(--fg);
-  padding: 0.2rem 0.6rem;
-  line-height: 1.2;
+  padding: 0.2rem 0.5rem;
+  line-height: 0;
 }
+#themeToggle svg { width: 16px; height: 16px; display: block; }
 
 nav button {
   border: 0;
