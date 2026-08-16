@@ -100,7 +100,7 @@ func (a *API) handleSelftest(w http.ResponseWriter, r *http.Request) {
 		checks["shares"] = check{OK: true}
 	}
 
-	// LocalSend port: self-dial the reject server.
+	// LocalSend port: self-dial the protocol server.
 	conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", a.cfg.LSPort), 2*time.Second)
 	if err != nil {
 		ok = false

@@ -16,7 +16,7 @@ import (
 	"github.com/alexindigo/localsend-nas/internal/httpapi"
 	"github.com/alexindigo/localsend-nas/internal/identity"
 	"github.com/alexindigo/localsend-nas/internal/localsend"
-	"github.com/alexindigo/localsend-nas/internal/rejectserver"
+	"github.com/alexindigo/localsend-nas/internal/lsserver"
 	"github.com/alexindigo/localsend-nas/internal/settings"
 	"github.com/alexindigo/localsend-nas/internal/shares"
 	"github.com/alexindigo/localsend-nas/internal/transfer"
@@ -69,7 +69,7 @@ func main() {
 
 	client := localsend.NewClient(id.Cert)
 	disc := discovery.New(info, client, cfg.DataDir, log)
-	reject := rejectserver.New(cfg.LSPort, id, info, disc)
+	lssrv := lsserver.New(cfg.LSPort, id, info, disc)
 	tm := transfer.New(store, disc, client, info, log)
 
 	webSrv := &http.Server{Addr: cfg.Listen, Handler: httpapi.New(cfg, store, disc, tm, settingsStore, info, version)}
@@ -81,7 +81,7 @@ func main() {
 
 	go func() {
 		log.Info("localsend endpoint listening", "port", cfg.LSPort, "protocol", "https (send-only)")
-		if err := reject.ListenAndServeTLS(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := lssrv.ListenAndServeTLS(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("localsend endpoint", "error", err)
 			stop()
 		}
@@ -107,5 +107,5 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	webSrv.Shutdown(shutdownCtx)
-	reject.Shutdown(shutdownCtx)
+	lssrv.Shutdown(shutdownCtx)
 }

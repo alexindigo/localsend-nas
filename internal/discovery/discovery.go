@@ -109,7 +109,7 @@ func (d *Discovery) Snapshot() []Device {
 }
 
 // Upsert records a device from a multicast announcement or a /register
-// callback (invoked by the reject server). Self-announcements are ignored.
+// callback (invoked by the LocalSend server). Self-announcements are ignored.
 func (d *Discovery) Upsert(info localsend.Info, sourceIP string) {
 	if info.Fingerprint == "" || info.Fingerprint == d.info.Fingerprint {
 		return

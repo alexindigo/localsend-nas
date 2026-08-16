@@ -18,7 +18,7 @@ type Share struct {
 // Config is the runtime configuration.
 type Config struct {
 	Listen  string  // web UI bind address
-	LSPort  int     // LocalSend protocol port (TCP reject server)
+	LSPort  int     // LocalSend protocol port (TCP protocol server)
 	Shares  []Share // ordered as given on the command line / env
 	Alias   string  // device alias advertised to other nodes
 	DataDir string  // identity + saved manual targets

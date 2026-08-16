@@ -1,8 +1,8 @@
-// Package rejectserver runs the node's LocalSend-facing HTTPS endpoint.
+// Package lsserver runs the node's LocalSend-facing HTTPS endpoint.
 // It answers discovery-protocol requests (/info, /register) so the node
 // appears in other devices' lists, and politely declines inbound
 // transfers: localsend-nas is send-only.
-package rejectserver
+package lsserver
 
 import (
 	"context"

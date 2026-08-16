@@ -1,4 +1,4 @@
-package rejectserver
+package lsserver
 
 import (
 	"encoding/json"
