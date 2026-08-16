@@ -1,5 +1,39 @@
 # Changelog
 
+## 2026-08-16
+
+### Feature
+
+Receiving: localsend-nas is now a full LocalSend node. When a device sends
+files to the NAS, every open browser tab pops a dialog (sender, file list,
+destination picker over the existing shares) with a countdown — default 30 s,
+adjustable in the new settings menu (gear icon, top right) alongside the
+optional dropbox share that auto-accepts on timeout ("saved to X" vs
+"request will be rejected" captions). Uploads are token-guarded, streamed to
+`.lnas-part` partials and atomically renamed, dedupe as `name (1).ext`,
+keep sender folder structure, and stay confined to share roots with
+per-element sanitization; the sender's claimed fingerprint is verified
+against its client certificate per the v2 security context. Receive sessions
+ride the Transfers panel (direction `←`, live progress, cancel, × cleanup),
+and a global SSE channel drives the popup in every open tab. The escape
+hatch `--read-only` / `LOCALSEND_NAS_READ_ONLY=1` restores the strict v1
+send-only posture. Verified against the official CLI as sender (manual
+accept and dropbox-timeout paths, byte-identical delivery).
+
+- feat: settings store + GET/PUT /api/settings (`c677612`)
+- refactor: export confined write-path resolution from shares (`27eca65`)
+- refactor: rejectserver → lsserver rename (`e0f27a9`)
+- feat: receive pipeline (sessions, upload, cancel) + --read-only flag (`92e8ba3`)
+- feat: receive jobs in transfers + decision endpoint + events stream (`543396d`)
+- feat: web UI receive modal, countdown, settings menu (`b0793f8`)
+
+### Docs
+
+README gains a Receiving section (dialog flow, dropbox, `--read-only`) and
+drops the "send-only" intro phrasing.
+
+- docs: README receiving section (`558ae7e`)
+
 ## 2026-08-15 (post-v0.1.2)
 
 ### Fix
