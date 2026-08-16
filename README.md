@@ -2,15 +2,34 @@
 
 # localsend-nas
 
-Send-only [LocalSend](https://localsend.org) node with a web UI, built for
+A [LocalSend](https://localsend.org) node with a web UI, built for
 NAS-style deployments: browse host-mounted share directories in a browser,
 assemble a basket of files, pick a discovered device, and the server sends the
 files directly to the recipient's LocalSend app — the files never
-round-trip through your laptop.
+round-trip through your laptop. Receiving works too: a desktop-app-style
+dialog lets you accept inbound files straight into a share.
 
 Speaks LocalSend Protocol v2.2 over HTTPS (port 53317 by default) and
 announces itself via multicast, so it shows up in other devices' lists.
-Incoming transfers are politely declined (`403`): this node is send-only.
+
+## Receiving
+
+On by default. When a device sends files to the NAS, every open UI tab pops a
+dialog with the sender, file list, a destination picker (any configured
+share), and a countdown (default 30 s):
+
+- **Accept / Decline** — your call, per transfer.
+- **Countdown expires** — with a *dropbox* configured, files are auto-accepted
+  into that share; otherwise the request is politely rejected.
+- **`--read-only`** (env `LOCALSEND_NAS_READ_ONLY=1`) — restores the strict
+  v1 send-only posture: no receiving at all (senders get a clean 403).
+
+Countdown length and the dropbox share live in the settings menu (gear icon,
+top right) and persist server-side in `<data-dir>/settings.json`.
+
+Received files keep their folder structure, never overwrite existing files
+(`name (1).ext` dedupe), and land in shares as normal files — browsable and
+re-sendable immediately.
 
 Single static Go binary, no runtime dependencies, embedded web UI.
 
