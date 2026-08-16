@@ -13,6 +13,7 @@ import (
 	"github.com/alexindigo/localsend-nas/internal/config"
 	"github.com/alexindigo/localsend-nas/internal/discovery"
 	"github.com/alexindigo/localsend-nas/internal/localsend"
+	"github.com/alexindigo/localsend-nas/internal/settings"
 	"github.com/alexindigo/localsend-nas/internal/shares"
 	"github.com/alexindigo/localsend-nas/internal/transfer"
 )
@@ -32,7 +33,11 @@ func testAPI(t *testing.T, lsPort int) (http.Handler, *shares.Store, string) {
 	info := localsend.Info{Alias: "Nas test", Fingerprint: "ABC123", Port: lsPort}
 	disc := discovery.New(info, nil, t.TempDir(), log)
 	tm := transfer.New(store, disc, nil, info, log)
-	return New(cfg, store, disc, tm, info, "v-test"), store, root
+	st, err := settings.Load(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return New(cfg, store, disc, tm, st, info, "v-test"), store, root
 }
 
 func TestHealth(t *testing.T) {

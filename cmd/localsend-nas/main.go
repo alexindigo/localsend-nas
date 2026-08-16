@@ -17,6 +17,7 @@ import (
 	"github.com/alexindigo/localsend-nas/internal/identity"
 	"github.com/alexindigo/localsend-nas/internal/localsend"
 	"github.com/alexindigo/localsend-nas/internal/rejectserver"
+	"github.com/alexindigo/localsend-nas/internal/settings"
 	"github.com/alexindigo/localsend-nas/internal/shares"
 	"github.com/alexindigo/localsend-nas/internal/transfer"
 )
@@ -60,12 +61,18 @@ func main() {
 		Download:    false,
 	}
 
+	settingsStore, err := settings.Load(cfg.DataDir)
+	if err != nil {
+		log.Error("settings", "error", err)
+		os.Exit(1)
+	}
+
 	client := localsend.NewClient(id.Cert)
 	disc := discovery.New(info, client, cfg.DataDir, log)
 	reject := rejectserver.New(cfg.LSPort, id, info, disc)
 	tm := transfer.New(store, disc, client, info, log)
 
-	webSrv := &http.Server{Addr: cfg.Listen, Handler: httpapi.New(cfg, store, disc, tm, info, version)}
+	webSrv := &http.Server{Addr: cfg.Listen, Handler: httpapi.New(cfg, store, disc, tm, settingsStore, info, version)}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

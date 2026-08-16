@@ -16,26 +16,30 @@ import (
 	"github.com/alexindigo/localsend-nas/internal/config"
 	"github.com/alexindigo/localsend-nas/internal/discovery"
 	"github.com/alexindigo/localsend-nas/internal/localsend"
+	"github.com/alexindigo/localsend-nas/internal/settings"
 	"github.com/alexindigo/localsend-nas/internal/shares"
 	"github.com/alexindigo/localsend-nas/internal/transfer"
 	"github.com/alexindigo/localsend-nas/web"
 )
 
 type API struct {
-	cfg     *config.Config
-	store   *shares.Store
-	disc    *discovery.Discovery
-	tm      *transfer.Manager
-	info    localsend.Info
-	version string
+	cfg      *config.Config
+	store    *shares.Store
+	disc     *discovery.Discovery
+	tm       *transfer.Manager
+	settings *settings.Store
+	info     localsend.Info
+	version  string
 }
 
 // Handler builds the HTTP handler: /api/* routes plus the embedded SPA.
-func New(cfg *config.Config, store *shares.Store, disc *discovery.Discovery, tm *transfer.Manager, info localsend.Info, version string) http.Handler {
-	a := &API{cfg: cfg, store: store, disc: disc, tm: tm, info: info, version: version}
+func New(cfg *config.Config, store *shares.Store, disc *discovery.Discovery, tm *transfer.Manager, settingsStore *settings.Store, info localsend.Info, version string) http.Handler {
+	a := &API{cfg: cfg, store: store, disc: disc, tm: tm, settings: settingsStore, info: info, version: version}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/health", a.handleHealth)
 	mux.HandleFunc("GET /api/selftest", a.handleSelftest)
+	mux.HandleFunc("GET /api/settings", a.handleGetSettings)
+	mux.HandleFunc("PUT /api/settings", a.handlePutSettings)
 	mux.HandleFunc("GET /api/shares", a.handleShares)
 	mux.HandleFunc("GET /api/list", a.handleList)
 	mux.HandleFunc("GET /api/devices", a.handleDevices)
@@ -120,6 +124,26 @@ func (a *API) handleSelftest(w http.ResponseWriter, r *http.Request) {
 	out["ok"] = ok
 	if !ok {
 		writeJSON(w, http.StatusServiceUnavailable, out)
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// --- settings ---
+
+func (a *API) handleGetSettings(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, a.settings.Get())
+}
+
+func (a *API) handlePutSettings(w http.ResponseWriter, r *http.Request) {
+	var in settings.Settings
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err))
+		return
+	}
+	out, err := a.settings.Update(in)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, out)
