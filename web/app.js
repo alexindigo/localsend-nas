@@ -349,7 +349,9 @@ function renderTransfers() {
       cancel.addEventListener("click", async () => {
         try { await api("POST", `/api/transfers/${j.id}/cancel`); } catch (err) { toast(err.message); }
       });
-      li.append(el("div", "actions")).append(cancel);
+      const actionsDiv = el("div", "actions");
+      actionsDiv.append(cancel);
+      li.append(actionsDiv);
     }
     ul.append(li);
   }
