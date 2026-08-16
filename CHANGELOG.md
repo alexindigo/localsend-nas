@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-08-15 (post-v0.1.2)
+
+### Fix
+
+Theme-toggle icons no longer depend on emoji fonts: bare codepoints without
+VS16 fell back to monochrome text glyphs on Linux (U+1F5A5 rendered as an
+ambiguous slab that read as a phone) — the toggle now uses inline SVGs that
+render identically everywhere and follow `currentColor`. Cancelling a
+waiting transfer now flips its state to `cancelled` immediately instead of
+appearing stuck until the receiver timed out.
+
+- fix: theme toggle icons as inline SVG (emoji glyphs unreliable on Linux) (`ea29410`)
+- fix: cancel transitions to cancelled state immediately (`4024ed4`)
+
+### Feature
+
+UI polish pass, all visible in the header and lists: the v3 logo sits next
+to the title (and centered atop the README), the palette is adopted from
+localsend.org (deep teal on mint in light, mint on teal-black in dark),
+Poppins is self-hosted and embedded, a GitHub repo link lives beside the
+theme toggle, device list entries and finished transfers can be cleaned up
+with an × button (devices DELETE endpoint now accepts discovered entries;
+a live one simply re-announces), and the theme toggle's system icon
+reflects the device class (phone on touch, monitor otherwise).
+
+- feat: logo in page header; centered in README (`a8a15e8`)
+- feat: self-hosted Poppins webfont; fix header alignment (`5746585`)
+- feat: theme toggle system icon reflects device class (`b124c25`)
+- feat: adopt localsend.org color palette (`86f5ed8`)
+- feat: GitHub repo link in header (`fae0131`)
+- feat: × remove for devices and terminal transfers (`35c51f1`)
+
 ## 2026-08-15 (post-v0.1.0)
 
 ### Fix
