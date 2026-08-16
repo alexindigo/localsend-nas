@@ -167,3 +167,82 @@ func (s *Store) Open(name, rel string) (io.ReadSeekCloser, Entry, error) {
 	}
 	return f, entry(fi.Name(), rel, fi), nil
 }
+
+// --- write path (used by the receive pipeline only) ---
+
+// SanitizeElement validates a single filename element received from a
+// sender: rejects empty, ".", "..", separators and control characters.
+func SanitizeElement(name string) (string, error) {
+	if name == "" || name == "." || name == ".." {
+		return "", fmt.Errorf("invalid name %q", name)
+	}
+	if strings.ContainsAny(name, "/\\\x00") {
+		return "", fmt.Errorf("invalid name %q: contains path separator", name)
+	}
+	for _, r := range name {
+		if r < 0x20 || r == 0x7f {
+			return "", fmt.Errorf("invalid name %q: control character", name)
+		}
+	}
+	return name, nil
+}
+
+// ResolveForWrite maps (share, rel) to an absolute path at which a new
+// file may be created: the parent directory must exist and is confined by
+// the same guard as reads; the final element is sanitized and need not
+// exist yet.
+func (s *Store) ResolveForWrite(name, rel string) (string, error) {
+	dir, base := filepath.Split(rel)
+	if _, err := SanitizeElement(base); err != nil {
+		return "", err
+	}
+	parent, err := s.resolve(name, dir)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(parent, base), nil
+}
+
+// EnsureDir makes (share, relDir) exist, creating each missing element
+// inside the confinement guard; existing elements must be directories and
+// pass the symlink check. Returns the confined absolute path.
+func (s *Store) EnsureDir(name, relDir string) (string, error) {
+	root, ok := s.roots[name]
+	if !ok {
+		return "", ErrUnknownShare
+	}
+	cur := root
+	rel := strings.TrimPrefix(filepath.Clean("/"+relDir), "/")
+	if rel == "" || rel == "." {
+		return cur, nil
+	}
+	for _, elem := range strings.Split(rel, "/") {
+		if _, err := SanitizeElement(elem); err != nil {
+			return "", err
+		}
+		candidate := filepath.Join(cur, elem)
+		_, err := os.Lstat(candidate)
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+			if err := os.Mkdir(candidate, 0o755); err != nil {
+				return "", err
+			}
+		case err != nil:
+			return "", err
+		default:
+			// Exists: must be a directory (resolving symlinks inside root).
+			eval, err := filepath.EvalSymlinks(candidate)
+			if err != nil {
+				return "", err
+			}
+			if eval != root && !strings.HasPrefix(eval, root+string(os.PathSeparator)) {
+				return "", ErrOutsideRoot
+			}
+			if efi, err := os.Stat(eval); err != nil || !efi.IsDir() {
+				return "", fmt.Errorf("%s is not a directory", elem)
+			}
+		}
+		cur = candidate
+	}
+	return cur, nil
+}
