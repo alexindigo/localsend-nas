@@ -183,16 +183,37 @@ func (m *Manager) Cancel(id string) bool {
 		m.mu.Unlock()
 		return false
 	}
-	if cancel == nil {
-		// Still queued: mark cancelled; the worker skips cancelled jobs.
-		j.State = StateCancelled
-		m.broadcastLocked(j)
-	}
+	// Mark cancelled immediately (covers queued and running jobs); the
+	// worker skips or unwinds into StateCancelled via fail().
+	j.State = StateCancelled
+	m.broadcastLocked(j)
 	m.mu.Unlock()
 	if cancel != nil {
-		cancel() // worker observes and transitions state
+		cancel()
 	}
 	return true
+}
+
+// Forget removes a terminal (done/failed/cancelled) job from the list.
+// Returns (found, removed); active jobs report (true, false).
+func (m *Manager) Forget(id string) (bool, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	j, ok := m.jobs[id]
+	if !ok {
+		return false, false
+	}
+	if j.State != StateDone && j.State != StateFailed && j.State != StateCancelled {
+		return true, false
+	}
+	delete(m.jobs, id)
+	for i, jid := range m.order {
+		if jid == id {
+			m.order = append(m.order[:i], m.order[i+1:]...)
+			break
+		}
+	}
+	return true, true
 }
 
 // Subscribe registers for job updates. The current snapshot is delivered
