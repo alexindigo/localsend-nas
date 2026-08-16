@@ -37,7 +37,7 @@ func testAPI(t *testing.T, lsPort int) (http.Handler, *shares.Store, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return New(cfg, store, disc, tm, st, info, "v-test"), store, root
+	return New(cfg, store, disc, tm, st, nil, info, "v-test"), store, root
 }
 
 func TestHealth(t *testing.T) {

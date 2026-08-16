@@ -11,11 +11,13 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alexindigo/localsend-nas/internal/config"
 	"github.com/alexindigo/localsend-nas/internal/discovery"
 	"github.com/alexindigo/localsend-nas/internal/localsend"
+	"github.com/alexindigo/localsend-nas/internal/receive"
 	"github.com/alexindigo/localsend-nas/internal/settings"
 	"github.com/alexindigo/localsend-nas/internal/shares"
 	"github.com/alexindigo/localsend-nas/internal/transfer"
@@ -28,18 +30,24 @@ type API struct {
 	disc     *discovery.Discovery
 	tm       *transfer.Manager
 	settings *settings.Store
+	rcv      *receive.Manager // nil in --read-only mode
 	info     localsend.Info
 	version  string
+	mux      *http.ServeMux
+
+	eventsMu sync.Mutex
+	events   map[chan transfer.Job]struct{} // global UI notifications
 }
 
-// Handler builds the HTTP handler: /api/* routes plus the embedded SPA.
-func New(cfg *config.Config, store *shares.Store, disc *discovery.Discovery, tm *transfer.Manager, settingsStore *settings.Store, info localsend.Info, version string) http.Handler {
-	a := &API{cfg: cfg, store: store, disc: disc, tm: tm, settings: settingsStore, info: info, version: version}
+// New builds the HTTP handler: /api/* routes plus the embedded SPA.
+func New(cfg *config.Config, store *shares.Store, disc *discovery.Discovery, tm *transfer.Manager, settingsStore *settings.Store, rcv *receive.Manager, info localsend.Info, version string) *API {
+	a := &API{cfg: cfg, store: store, disc: disc, tm: tm, settings: settingsStore, rcv: rcv, info: info, version: version, events: map[chan transfer.Job]struct{}{}}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/health", a.handleHealth)
 	mux.HandleFunc("GET /api/selftest", a.handleSelftest)
 	mux.HandleFunc("GET /api/settings", a.handleGetSettings)
 	mux.HandleFunc("PUT /api/settings", a.handlePutSettings)
+	mux.HandleFunc("GET /api/events", a.handleGlobalEvents)
 	mux.HandleFunc("GET /api/shares", a.handleShares)
 	mux.HandleFunc("GET /api/list", a.handleList)
 	mux.HandleFunc("GET /api/devices", a.handleDevices)
@@ -50,9 +58,15 @@ func New(cfg *config.Config, store *shares.Store, disc *discovery.Discovery, tm 
 	mux.HandleFunc("GET /api/transfers/{id}/events", a.handleTransferEvents)
 	mux.HandleFunc("POST /api/transfers/{id}/cancel", a.handleCancelTransfer)
 	mux.HandleFunc("DELETE /api/transfers/{id}", a.handleDeleteTransfer)
+	mux.HandleFunc("POST /api/receive/{id}/decision", a.handleReceiveDecision)
 	mux.HandleFunc("GET /", a.handleSPA)
-	return mux
+	a.mux = mux
+	return a
 }
+
+// ServeHTTP routes through the API's mux (New returns *API so main can
+// wire BroadcastJob into the transfer manager's global notify hook).
+func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) { a.mux.ServeHTTP(w, r) }
 
 // --- operability ---
 
@@ -236,6 +250,81 @@ func (a *API) handleDeleteDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// --- receive decisions + global events ---
+
+// handleReceiveDecision answers a pending inbound transfer:
+// {"accept": true, "share": "name"} or {"accept": false}.
+func (a *API) handleReceiveDecision(w http.ResponseWriter, r *http.Request) {
+	if a.rcv == nil {
+		writeError(w, http.StatusForbidden, errors.New("read-only mode"))
+		return
+	}
+	var body struct {
+		Accept bool   `json:"accept"`
+		Share  string `json:"share"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid body: %w", err))
+		return
+	}
+	if err := a.rcv.Decide(r.PathValue("id"), body.Accept, body.Share); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// BroadcastJob fans a job event out to all UI clients (wired in main to
+// the transfer manager's global notify hook).
+func (a *API) BroadcastJob(j transfer.Job) {
+	a.eventsMu.Lock()
+	defer a.eventsMu.Unlock()
+	for ch := range a.events {
+		select {
+		case ch <- j:
+		default:
+		}
+	}
+}
+
+// handleGlobalEvents streams UI-wide notifications (incoming receive
+// offers) as SSE. Clients also see pending receives via /api/transfers.
+func (a *API) handleGlobalEvents(w http.ResponseWriter, r *http.Request) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeError(w, http.StatusInternalServerError, errors.New("streaming unsupported"))
+		return
+	}
+	ch := make(chan transfer.Job, 32)
+	a.eventsMu.Lock()
+	a.events[ch] = struct{}{}
+	a.eventsMu.Unlock()
+	defer func() {
+		a.eventsMu.Lock()
+		delete(a.events, ch)
+		a.eventsMu.Unlock()
+	}()
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, ": connected\n\n")
+	flusher.Flush()
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case job := <-ch:
+			data, err := json.Marshal(job)
+			if err != nil {
+				continue
+			}
+			fmt.Fprintf(w, "data: %s\n\n", data)
+			flusher.Flush()
+		}
+	}
 }
 
 // --- transfers ---

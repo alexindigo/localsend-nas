@@ -6,9 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/alexindigo/localsend-nas/internal/discovery"
 	"github.com/alexindigo/localsend-nas/internal/localsend"
+	"github.com/alexindigo/localsend-nas/internal/receive"
 	"github.com/alexindigo/localsend-nas/internal/shares"
 )
 
@@ -108,6 +110,35 @@ func TestMimeType(t *testing.T) {
 	}
 	if got := mimeType("noext"); got != "application/octet-stream" {
 		t.Fatalf("noext: %q", got)
+	}
+}
+
+func TestReceiveHooksIntegration(t *testing.T) {
+	m := testManager(t)
+	sess := &receive.Session{
+		ID:        "s1",
+		Sender:    localsend.Info{Alias: "phone", Fingerprint: "fp1"},
+		State:     "pending",
+		CreatedAt: time.Now(),
+		Files: map[string]*receive.File{
+			"f0": {DTO: localsend.FileDTO{ID: "f0", FileName: "a.txt", Size: 5}},
+		},
+	}
+	m.ReceiveRegistered(sess)
+	jobs := m.List()
+	if len(jobs) != 1 || jobs[0].Direction != "receive" || jobs[0].State != StateAwaitingAccept || jobs[0].Total != 5 {
+		t.Fatalf("bad job after register: %+v", jobs)
+	}
+	m.ReceiveState("s1", "accepted", "")
+	m.ReceiveProgress("s1", "f0", 5)
+	m.ReceiveFileDone("s1", "f0")
+	m.ReceiveState("s1", "done", "")
+	j := m.List()[0]
+	if j.State != StateDone || j.Sent != 5 || !j.Files[0].Done {
+		t.Fatalf("bad final job: %+v", j)
+	}
+	if ok, removed := m.Forget("s1"); !ok || !removed {
+		t.Fatal("terminal receive job must be forgettable")
 	}
 }
 

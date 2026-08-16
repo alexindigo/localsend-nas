@@ -70,15 +70,18 @@ func main() {
 
 	client := localsend.NewClient(id.Cert)
 	disc := discovery.New(info, client, cfg.DataDir, log)
+	tm := transfer.New(store, disc, client, info, log)
 
 	var receiver *receive.Manager
 	if !cfg.ReadOnly {
-		receiver = receive.New(store, settingsStore, nil, log)
+		receiver = receive.New(store, settingsStore, tm, log)
+		tm.SetReceiveCancel(receiver.CancelSession)
 	}
 	lssrv := lsserver.New(cfg.LSPort, id, info, disc, receiver)
-	tm := transfer.New(store, disc, client, info, log)
 
-	webSrv := &http.Server{Addr: cfg.Listen, Handler: httpapi.New(cfg, store, disc, tm, settingsStore, info, version)}
+	apiHandler := httpapi.New(cfg, store, disc, tm, settingsStore, receiver, info, version)
+	tm.SetGlobalNotify(apiHandler.BroadcastJob)
+	webSrv := &http.Server{Addr: cfg.Listen, Handler: apiHandler}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

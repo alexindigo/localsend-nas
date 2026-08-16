@@ -13,12 +13,14 @@ import (
 	"log/slog"
 	"mime"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/alexindigo/localsend-nas/internal/discovery"
 	"github.com/alexindigo/localsend-nas/internal/localsend"
+	"github.com/alexindigo/localsend-nas/internal/receive"
 	"github.com/alexindigo/localsend-nas/internal/shares"
 )
 
@@ -28,9 +30,11 @@ const (
 	StatePreparing      = "preparing"
 	StateAwaitingAccept = "awaiting-accept"
 	StateSending        = "sending"
+	StateReceiving      = "receiving"
 	StateDone           = "done"
 	StateFailed         = "failed"
 	StateCancelled      = "cancelled"
+	StateDeclined       = "declined"
 )
 
 // ItemRef is one basket item: a file or directory within a share.
@@ -50,9 +54,10 @@ type FileProgress struct {
 	Done  bool   `json:"done"`
 }
 
-// Job is one send batch to one target.
+// Job is one send batch to one target, or one inbound receive session.
 type Job struct {
 	ID        string         `json:"id"`
+	Direction string         `json:"direction"` // "send" | "receive"
 	TargetFP  string         `json:"target"`
 	Alias     string         `json:"alias"`
 	State     string         `json:"state"`
@@ -75,10 +80,12 @@ type Manager struct {
 	info     localsend.Info
 	log      *slog.Logger
 
-	mu     sync.Mutex
-	jobs   map[string]*job
-	order  []string // job IDs, creation order
-	queues map[string]chan *job
+	mu            sync.Mutex
+	jobs          map[string]*job
+	order         []string // job IDs, creation order
+	queues        map[string]chan *job
+	cancelReceive func(id string) // routes cancel to the receive pipeline
+	globalNotify  func(Job)       // fan-out for UI popups (incoming offers)
 }
 
 type subscriber struct {
@@ -87,8 +94,9 @@ type subscriber struct {
 
 type job struct {
 	Job
-	cancel context.CancelFunc
-	subs   map[*subscriber]struct{}
+	cancel   context.CancelFunc
+	subs     map[*subscriber]struct{}
+	throttle *progressThrottle
 }
 
 // New builds a Manager. info is our own LocalSend info DTO.
@@ -158,6 +166,12 @@ func (m *Manager) Send(targetFP string, items []ItemRef) (string, error) {
 	return id, nil
 }
 
+// SetReceiveCancel wires the receive pipeline's cancel (job ID == session ID).
+func (m *Manager) SetReceiveCancel(fn func(string)) { m.cancelReceive = fn }
+
+// SetGlobalNotify wires fan-out for UI popups on incoming offers.
+func (m *Manager) SetGlobalNotify(fn func(Job)) { m.globalNotify = fn }
+
 // List returns all jobs, newest first.
 func (m *Manager) List() []Job {
 	m.mu.Lock()
@@ -175,6 +189,14 @@ func (m *Manager) Cancel(id string) bool {
 	j, ok := m.jobs[id]
 	if !ok {
 		m.mu.Unlock()
+		return false
+	}
+	if j.Direction == "receive" {
+		m.mu.Unlock()
+		if m.cancelReceive != nil {
+			m.cancelReceive(id) // state flows back via ReceiveState hook
+			return true
+		}
 		return false
 	}
 	terminal := j.State == StateDone || j.State == StateFailed || j.State == StateCancelled
@@ -203,7 +225,7 @@ func (m *Manager) Forget(id string) (bool, bool) {
 	if !ok {
 		return false, false
 	}
-	if j.State != StateDone && j.State != StateFailed && j.State != StateCancelled {
+	if j.State != StateDone && j.State != StateFailed && j.State != StateCancelled && j.State != StateDeclined {
 		return true, false
 	}
 	delete(m.jobs, id)
@@ -466,4 +488,101 @@ func (t *progressThrottle) maybe() {
 	}
 	t.last = time.Now()
 	t.emit()
+}
+
+// --- receive.Hooks implementation (inbound sessions ride the job list) ---
+
+func (m *Manager) ReceiveRegistered(s *receive.Session) {
+	j := &job{subs: map[*subscriber]struct{}{}}
+	j.ID = s.ID
+	j.Direction = "receive"
+	j.TargetFP = s.Sender.Fingerprint
+	j.Alias = s.Sender.Alias
+	j.State = StateAwaitingAccept
+	j.CreatedAt = s.CreatedAt
+	files := make([]*receive.File, 0, len(s.Files))
+	for _, f := range s.Files {
+		files = append(files, f)
+	}
+	sort.Slice(files, func(i, k int) bool { return files[i].DTO.FileName < files[k].DTO.FileName })
+	for _, f := range files {
+		j.Files = append(j.Files, FileProgress{ID: f.DTO.ID, Name: f.DTO.FileName, Size: f.DTO.Size})
+		j.Total += f.DTO.Size
+	}
+	m.mu.Lock()
+	m.jobs[j.ID] = j
+	m.order = append(m.order, j.ID)
+	snap := j.snapshot()
+	m.mu.Unlock()
+	m.broadcast(j)
+	if m.globalNotify != nil {
+		m.globalNotify(snap) // UI popup
+	}
+}
+
+func (m *Manager) ReceiveState(id, state, errMsg string) {
+	m.mu.Lock()
+	j, ok := m.jobs[id]
+	if !ok {
+		m.mu.Unlock()
+		return
+	}
+	switch state {
+	case "pending":
+		j.State = StateAwaitingAccept
+	case "accepted":
+		j.State = StateReceiving
+	case "done":
+		j.State = StateDone
+	case "declined":
+		j.State = StateDeclined
+	case "cancelled":
+		j.State = StateCancelled
+	case "failed":
+		j.State = StateFailed
+	default:
+		j.State = state
+	}
+	j.Error = errMsg
+	m.mu.Unlock()
+	m.broadcast(j)
+}
+
+func (m *Manager) ReceiveProgress(id, fileID string, delta int64) {
+	m.mu.Lock()
+	j, ok := m.jobs[id]
+	if !ok {
+		m.mu.Unlock()
+		return
+	}
+	for i := range j.Files {
+		if j.Files[i].ID == fileID {
+			j.Files[i].Sent += delta
+			break
+		}
+	}
+	j.Sent += delta
+	if j.throttle == nil {
+		j.throttle = &progressThrottle{emit: func() { m.broadcast(j) }}
+	}
+	th := j.throttle
+	m.mu.Unlock()
+	th.maybe()
+}
+
+func (m *Manager) ReceiveFileDone(id, fileID string) {
+	m.mu.Lock()
+	j, ok := m.jobs[id]
+	if !ok {
+		m.mu.Unlock()
+		return
+	}
+	for i := range j.Files {
+		if j.Files[i].ID == fileID {
+			j.Files[i].Done = true
+			break
+		}
+	}
+	m.mu.Unlock()
+	m.broadcast(j)
 }
