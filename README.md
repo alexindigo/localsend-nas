@@ -37,6 +37,31 @@ docker run -d --name localsend-nas --network host \
 `LOCALSEND_NAS_*` env equivalents (`--listen` → `LOCALSEND_NAS_LISTEN`,
 repeatable `--share` → comma-separated `LOCALSEND_NAS_SHARES`, …).
 
+docker-compose equivalent:
+
+```yaml
+services:
+  localsend-nas:
+    image: ghcr.io/alexindigo/localsend-nas:latest
+    container_name: localsend-nas
+    network_mode: host          # required for multicast discovery
+    restart: unless-stopped
+    environment:
+      LOCALSEND_NAS_SHARES: movies=/srv/movies,books=/srv/books
+      # LOCALSEND_NAS_LISTEN: ":8080"   # image default; :80 needs root
+      # LOCALSEND_NAS_ALIAS: "Nas living-room"
+    volumes:
+      - /srv/movies:/srv/movies:ro    # shares are read-only by design
+      - /srv/books:/srv/books:ro
+      - localsend-nas-data:/data      # persistent device identity
+
+volumes:
+  localsend-nas-data:
+```
+
+With `network_mode: host` the web UI lands on the host's port 8080
+directly; change `LOCALSEND_NAS_LISTEN` if that clashes.
+
 ## Operability (for scripts and monitoring)
 
 - `GET /api/health` — liveness + identity: `{"version","protocol","alias","fingerprint","lsPort"}`.
