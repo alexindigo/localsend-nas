@@ -63,7 +63,8 @@ docker-compose equivalent:
 ```yaml
 services:
   localsend-nas:
-    image: alexindigo/localsend-nas:latest
+    # use `alexindigo/localsend-nas` for the Docker Hub based image
+    image: ghcr.io/alexindigo/localsend-nas:latest
     container_name: localsend-nas
     network_mode: host          # required for multicast discovery
     restart: unless-stopped
