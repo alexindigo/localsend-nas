@@ -75,8 +75,11 @@ directly; change `LOCALSEND_NAS_LISTEN` if that clashes.
 
 Early development. See the commit history and the plan document for scope.
 
-Logo: `web/logo.svg` (source) / `web/logo.png` (rendered) — original artwork
-for this project, LGPL-3.0 like the rest.
+Logo: `web/logo.svg` (source) / `web/logo.png` (rendered) — the LocalSend
+"device + broadcast ring" motif, squared: a NAS box at the center of the
+local network. Style derived from the LocalSend logo (© Tien Do Nam,
+[Apache-2.0](https://github.com/localsend/localsend)) as an ecosystem
+homage — this is not an official LocalSend project.
 
 ## License
 

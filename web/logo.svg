@@ -1,21 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- backdrop: teal gradient -->
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#13a493"/>
-      <stop offset="1" stop-color="#0b6e63"/>
-    </linearGradient>
-    <linearGradient id="stripe" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#eafffb"/>
-      <stop offset="1" stop-color="#b8ece4"/>
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" rx="104" fill="url(#bg)"/>
-
-  <!-- send stripes: three rounded speed bars, rising to the right -->
-  <g fill="url(#stripe)">
-    <rect x="88" y="150" width="200" height="40" rx="20" transform="rotate(-6 256 256)"/>
-    <rect x="88" y="236" width="290" height="40" rx="20" transform="rotate(-6 256 256)"/>
-    <rect x="88" y="322" width="380" height="40" rx="20" transform="rotate(-6 256 256)"/>
-  </g>
+  <!-- localsend-nas mark v3: solid NAS square inside a dashed
+       rounded-square ring — LocalSend's "dot + dashed ring" motif,
+       squared. Style derived from the LocalSend logo (© Tien Do Nam,
+       Apache-2.0). -->
+  <rect width="512" height="512" rx="112" fill="#008080"/>
+  <!-- ring: dashed rounded-square outline; 8 dashes centered on
+       sides + corners (period = perimeter/8 ≈ 180.5) -->
+  <rect x="60" y="60" width="392" height="392" rx="72" fill="none"
+        stroke="#ffffff" stroke-width="40"
+        stroke-dasharray="115 65.5" stroke-dashoffset="-66.5"
+        stroke-linecap="round"/>
+  <!-- center: the NAS -->
+  <rect x="149" y="149" width="214" height="214" rx="46" fill="#ffffff"/>
 </svg>

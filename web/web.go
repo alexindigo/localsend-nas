@@ -3,5 +3,5 @@ package web
 
 import "embed"
 
-//go:embed index.html app.js style.css favicon.png
+//go:embed index.html app.js style.css favicon.png apple-touch-icon.png
 var FS embed.FS
