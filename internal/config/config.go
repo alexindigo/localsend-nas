@@ -17,11 +17,12 @@ type Share struct {
 
 // Config is the runtime configuration.
 type Config struct {
-	Listen  string  // web UI bind address
-	LSPort  int     // LocalSend protocol port (TCP protocol server)
-	Shares  []Share // ordered as given on the command line / env
-	Alias   string  // device alias advertised to other nodes
-	DataDir string  // identity + saved manual targets
+	Listen   string  // web UI bind address
+	LSPort   int     // LocalSend protocol port (TCP protocol server)
+	Shares   []Share // ordered as given on the command line / env
+	Alias    string  // device alias advertised to other nodes
+	DataDir  string  // identity + saved manual targets + settings
+	ReadOnly bool    // send-only posture: no receiving, strict read-only shares
 }
 
 // shareList collects repeatable --share name=path flags.
@@ -72,6 +73,7 @@ func Parse(args []string) (*Config, error) {
 	fs.IntVar(&cfg.LSPort, "ls-port", envOrInt("LOCALSEND_NAS_LS_PORT", 53317), "LocalSend protocol port (TCP+multicast peer port)")
 	fs.StringVar(&cfg.Alias, "alias", envOr("LOCALSEND_NAS_ALIAS", ""), `device alias (default: "Nas <hostname>")`)
 	fs.StringVar(&cfg.DataDir, "data-dir", envOr("LOCALSEND_NAS_DATA_DIR", "/var/lib/localsend-nas"), "identity + saved manual targets directory")
+	fs.BoolVar(&cfg.ReadOnly, "read-only", envOrBool("LOCALSEND_NAS_READ_ONLY", false), "send-only mode: no receiving, shares strictly read-only")
 	var shares shareList
 	fs.Var(&shares, "share", "share root as name=path (repeatable; at least one required)")
 
@@ -114,6 +116,18 @@ func Parse(args []string) (*Config, error) {
 		return nil, fmt.Errorf("invalid --ls-port %d", cfg.LSPort)
 	}
 	return cfg, nil
+}
+
+func envOrBool(key string, def bool) bool {
+	if v := os.Getenv(key); v != "" {
+		switch strings.ToLower(v) {
+		case "1", "true", "yes", "on":
+			return true
+		case "0", "false", "no", "off":
+			return false
+		}
+	}
+	return def
 }
 
 func envOrInt(key string, def int) int {

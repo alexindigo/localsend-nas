@@ -17,6 +17,7 @@ import (
 	"github.com/alexindigo/localsend-nas/internal/identity"
 	"github.com/alexindigo/localsend-nas/internal/localsend"
 	"github.com/alexindigo/localsend-nas/internal/lsserver"
+	"github.com/alexindigo/localsend-nas/internal/receive"
 	"github.com/alexindigo/localsend-nas/internal/settings"
 	"github.com/alexindigo/localsend-nas/internal/shares"
 	"github.com/alexindigo/localsend-nas/internal/transfer"
@@ -69,7 +70,12 @@ func main() {
 
 	client := localsend.NewClient(id.Cert)
 	disc := discovery.New(info, client, cfg.DataDir, log)
-	lssrv := lsserver.New(cfg.LSPort, id, info, disc)
+
+	var receiver *receive.Manager
+	if !cfg.ReadOnly {
+		receiver = receive.New(store, settingsStore, nil, log)
+	}
+	lssrv := lsserver.New(cfg.LSPort, id, info, disc, receiver)
 	tm := transfer.New(store, disc, client, info, log)
 
 	webSrv := &http.Server{Addr: cfg.Listen, Handler: httpapi.New(cfg, store, disc, tm, settingsStore, info, version)}

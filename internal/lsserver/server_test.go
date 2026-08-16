@@ -23,7 +23,7 @@ func testServer(t *testing.T, reg Registry) *httptest.Server {
 		t.Fatal(err)
 	}
 	info := localsend.Info{Alias: "Nas test", Fingerprint: id.Fingerprint, Port: 53317, Protocol: "https"}
-	s := New(0, id, info, reg)
+	s := New(0, id, info, reg, nil)
 	ts := httptest.NewUnstartedServer(s.http.Handler)
 	ts.Start()
 	t.Cleanup(ts.Close)
