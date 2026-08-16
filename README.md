@@ -41,14 +41,16 @@ Binary (see [releases](https://github.com/alexindigo/localsend-nas/releases)):
 localsend-nas --listen :80 --share movies=/srv/movies --share books=/srv/books
 ```
 
-Docker (`ghcr.io/alexindigo/localsend-nas`):
+Docker (`alexindigo/localsend-nas` on Docker Hub — also on
+[GHCR](https://github.com/alexindigo/localsend-nas/pkgs/container/localsend-nas);
+Docker Hub is the one Synology Container Manager can browse):
 
 ```bash
 docker run -d --name localsend-nas --network host \
   -v /srv/movies:/srv/movies:ro -v /srv/books:/srv/books:ro \
   -v localsend-nas-data:/data \
   -e LOCALSEND_NAS_SHARES="movies=/srv/movies,books=/srv/books" \
-  ghcr.io/alexindigo/localsend-nas:latest
+  alexindigo/localsend-nas:latest
 ```
 
 `--network host` is recommended: LocalSend discovery rides multicast UDP
@@ -61,7 +63,7 @@ docker-compose equivalent:
 ```yaml
 services:
   localsend-nas:
-    image: ghcr.io/alexindigo/localsend-nas:latest
+    image: alexindigo/localsend-nas:latest
     container_name: localsend-nas
     network_mode: host          # required for multicast discovery
     restart: unless-stopped

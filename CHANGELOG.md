@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-08-16 (post-v0.2.0)
+
+### CI
+
+Docker images now dual-publish to Docker Hub (`alexindigo/localsend-nas`)
+alongside GHCR in a single tag-triggered build — Synology Container Manager
+and TrueNAS can browse/pull them natively (their registry clients don't
+support GHCR's token-auth flow). README and the compose example lead with
+the Docker Hub name. Packaging-only change; no code touched.
+
 ## 2026-08-16
 
 ### Feature
