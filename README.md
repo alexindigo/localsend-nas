@@ -1,6 +1,6 @@
-# localsend-nas
+<p align="center"><img src="web/logo.png" width="200" alt="localsend-nas logo"></p>
 
-<img src="web/logo.png" alt="localsend-nas logo" width="128" align="right">
+# localsend-nas
 
 Send-only [LocalSend](https://localsend.org) node with a web UI, built for
 NAS-style deployments: browse host-mounted share directories in a browser,

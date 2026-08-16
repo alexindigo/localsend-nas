@@ -40,6 +40,9 @@ header {
 
 h1 { font-size: 1.1rem; margin: 0; }
 
+.brand { display: flex; align-items: center; gap: 0.5rem; }
+.brand img { border-radius: 6px; }
+
 #themeToggle {
   margin-left: auto;
   background: none;
