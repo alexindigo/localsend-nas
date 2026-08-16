@@ -89,7 +89,11 @@ func main() {
 	disc.Start(ctx)
 
 	go func() {
-		log.Info("localsend endpoint listening", "port", cfg.LSPort, "protocol", "https (send-only)")
+		mode := "send+receive"
+		if cfg.ReadOnly {
+			mode = "send-only"
+		}
+		log.Info("localsend endpoint listening", "port", cfg.LSPort, "protocol", "https", "mode", mode)
 		if err := lssrv.ListenAndServeTLS(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("localsend endpoint", "error", err)
 			stop()

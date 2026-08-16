@@ -118,6 +118,7 @@ const state = {
   devices: [],
   jobs: new Map(),    // jobId -> job
   events: new Map(),  // jobId -> EventSource
+  settings: { acceptTimeoutSec: 30, dropboxShare: "" },
 };
 
 // --- tabs -------------------------------------------------------------------
@@ -319,13 +320,21 @@ async function sendBasket(d) {
 
 // --- transfers --------------------------------------------------------------
 
-const ACTIVE = new Set(["queued", "preparing", "awaiting-accept", "sending"]);
+const ACTIVE = new Set(["queued", "preparing", "awaiting-accept", "sending", "receiving"]);
 
 async function refreshTransfers() {
   const jobs = await api("GET", "/api/transfers");
   state.jobs = new Map((jobs || []).map((j) => [j.id, j]));
   renderTransfers();
   for (const j of state.jobs.values()) if (ACTIVE.has(j.state)) watchJob(j.id);
+  // Receive modal fallback (opened after the offer fired) + close on resolve.
+  const pending = [...state.jobs.values()].find((j) => j.direction === "receive" && j.state === "awaiting-accept");
+  if (pending) {
+    openOffer(pending);
+  } else if (offerId) {
+    const cur = state.jobs.get(offerId);
+    if (!cur || cur.state !== "awaiting-accept") closeOffer();
+  }
 }
 
 function watchJob(id) {
@@ -354,7 +363,7 @@ function renderTransfers() {
   for (const j of jobs) {
     const li = el("li", "card");
     const head = el("div", "card-head");
-    head.append(el("strong", "", `→ ${j.alias}`), el("span", `state state-${j.state}`, j.state));
+    head.append(el("strong", "", `${j.direction === "receive" ? "←" : "→"} ${j.alias}`), el("span", `state state-${j.state}`, j.state));
     li.append(head);
 
     const totalBar = el("div", "bar");
@@ -387,6 +396,113 @@ function renderTransfers() {
   }
 }
 
+// --- settings menu ----------------------------------------------------------
+
+async function loadSettings() {
+  state.settings = await api("GET", "/api/settings");
+  $("#setTimeout").value = state.settings.acceptTimeoutSec;
+  const sel = $("#setDropbox");
+  sel.replaceChildren(el("option", "", "off (reject on timeout)"));
+  sel.firstChild.value = "";
+  for (const s of state.shares) {
+    const o = el("option", "", s.name);
+    o.value = s.name;
+    sel.append(o);
+  }
+  sel.value = state.settings.dropboxShare || "";
+}
+
+async function saveSettings() {
+  try {
+    state.settings = await api("PUT", "/api/settings", {
+      acceptTimeoutSec: Math.max(5, Math.min(300, parseInt($("#setTimeout").value, 10) || 30)),
+      dropboxShare: $("#setDropbox").value,
+    });
+  } catch (err) { toast(err.message); }
+}
+
+$("#settingsBtn").addEventListener("click", (e) => {
+  e.stopPropagation();
+  $("#settingsMenu").hidden = !$("#settingsMenu").hidden;
+});
+document.addEventListener("click", (e) => {
+  if (!$("#settingsMenu").hidden && !e.target.closest("#settingsMenu") && !e.target.closest("#settingsBtn")) {
+    $("#settingsMenu").hidden = true;
+  }
+});
+$("#setTimeout").addEventListener("change", saveSettings);
+$("#setDropbox").addEventListener("change", saveSettings);
+
+// --- receive modal ----------------------------------------------------------
+
+let offerId = null;
+let offerTimer = null;
+
+function openOffer(job) {
+  if (offerId === job.id) return;
+  offerId = job.id;
+  $("#rmTitle").textContent = `← ${job.alias} wants to send`;
+  const files = $("#rmFiles");
+  files.replaceChildren();
+  for (const f of job.files) {
+    const row = el("div", "row");
+    row.append(el("span", "name", f.name), el("span", "muted small", fmtBytes(f.size)));
+    files.append(row);
+  }
+  files.append(el("div", "muted small", `${job.files.length} file(s), ${fmtBytes(job.total)} total`));
+  const dest = $("#rmDest");
+  dest.replaceChildren(...state.shares.map((s) => {
+    const o = el("option", "", s.name);
+    o.value = s.name;
+    return o;
+  }));
+
+  const timeout = state.settings.acceptTimeoutSec || 30;
+  const drop = state.settings.dropboxShare;
+  const deadline = Date.now() + timeout * 1000;
+  const bar = $("#rmCountdown");
+  const caption = $("#rmCaption");
+  clearInterval(offerTimer);
+  offerTimer = setInterval(() => {
+    const left = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+    bar.style.width = `${(100 * left) / timeout}%`;
+    caption.textContent = drop
+      ? `In ${left}s — will be saved to "${drop}"`
+      : `In ${left}s — request will be rejected`;
+    if (left <= 0) closeOffer(); // server enforces the actual timeout action
+  }, 250);
+  $("#receiveModal").hidden = false;
+}
+
+function closeOffer() {
+  clearInterval(offerTimer);
+  offerTimer = null;
+  offerId = null;
+  $("#receiveModal").hidden = true;
+}
+
+async function decideOffer(accept) {
+  const id = offerId;
+  if (!id) return;
+  try {
+    await api("POST", `/api/receive/${id}/decision`, { accept, share: $("#rmDest").value });
+  } catch (err) { toast(err.message); }
+  closeOffer();
+  await refreshTransfers();
+}
+
+$("#rmAccept").addEventListener("click", () => decideOffer(true));
+$("#rmDecline").addEventListener("click", () => decideOffer(false));
+
+function startGlobalEvents() {
+  const es = new EventSource("/api/events");
+  es.onmessage = (ev) => {
+    const job = JSON.parse(ev.data);
+    if (job.direction === "receive" && job.state === "awaiting-accept") openOffer(job);
+  };
+  es.onerror = () => {}; // EventSource auto-reconnects
+}
+
 // --- boot -------------------------------------------------------------------
 
 (async function boot() {
@@ -394,8 +510,9 @@ function renderTransfers() {
   renderBasketBar();
   try {
     await loadShares();
-    await Promise.all([loadDevices(), refreshTransfers()]);
+    await Promise.all([loadDevices(), refreshTransfers(), loadSettings()]);
   } catch (err) { toast(err.message); }
+  startGlobalEvents();
   setInterval(() => { if (!$("#tab-devices").hidden) loadDevices().catch(() => {}); }, 5000);
   setInterval(() => { if (!$("#tab-transfers").hidden) refreshTransfers().catch(() => {}); }, 3000);
 })();
