@@ -88,7 +88,7 @@ function applyTheme(id) {
   root.classList.toggle("dark", dark);            // html.dark drives CSS vars
   root.style.colorScheme = dark ? "dark" : "light"; // native widgets/scrollbars
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = dark ? "#161a22" : "#f6f7f9";
+  if (meta) meta.content = dark ? "#0e1513" : "#f4fbf8";
   const btn = $("#themeToggle");
   if (btn) {
     btn.innerHTML = themeIcon(id); // static icon markup only, never user data

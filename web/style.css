@@ -13,24 +13,27 @@
   src: url("fonts/Poppins/Poppins-SemiBold.ttf");
 }
 
+/* Palette adopted from localsend.org */
 :root {
-  --bg: #f6f7f9;
-  --fg: #1c1e21;
-  --muted: #6a737d;
-  --card: #ffffff;
-  --line: #d8dce1;
-  --accent: #1a73e8;
+  --bg: #f4fbf8;
+  --fg: #05201c;
+  --muted: #3f4947;
+  --card: #eff5f2;
+  --line: rgba(63, 73, 71, 0.16);
+  --accent: #006a60;
+  --on-accent: #ffffff;
   --error: #b3261e;
   --ok: #2e7d32;
 }
 
 html.dark {
-  --bg: #161a22;
-  --fg: #d3d9e3;
-  --muted: #8a93a5;
-  --card: #1f2630;
-  --line: #333c4d;
-  --accent: #5b9bf5;
+  --bg: #0e1513;
+  --fg: #ffffff;
+  --muted: #a0b0ad;
+  --card: #131e1c;
+  --line: rgba(130, 213, 200, 0.1);
+  --accent: #82d5c8;
+  --on-accent: #05201c;
   --error: #ef5350;
   --ok: #66bb6a;
 }
@@ -104,7 +107,7 @@ button {
   border: 1px solid var(--accent);
   border-radius: 4px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   cursor: pointer;
   font: inherit;
 }
