@@ -341,6 +341,8 @@ func mimeByExt(p string) string {
 		return "text/javascript; charset=utf-8"
 	case strings.HasSuffix(p, ".png"):
 		return "image/png"
+	case strings.HasSuffix(p, ".ttf"):
+		return "font/ttf"
 	}
 	return ""
 }
