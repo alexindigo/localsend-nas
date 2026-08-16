@@ -2,6 +2,16 @@
 
 ## 2026-08-15 (post-v0.1.0)
 
+### Fix
+
+The Transfers panel stayed empty while a job was active and only appeared
+once it finished: the cancel-button render chained off `Node.append()`,
+which returns `undefined`, throwing mid-render for every non-terminal job.
+Split into separate statements; verified in headless Chrome with a live
+job in both states.
+
+- fix: render cancel button without chaining Node.append (`20e9589`)
+
 ### Feature
 
 Operability endpoints for automation: the LXC install script, Docker
@@ -13,6 +23,18 @@ returns 503 with per-check error strings on failure, so
 `curl -sf …/api/selftest` works as an install gate.
 
 - feat: /api/health + /api/selftest operability endpoints (`ab3bce6`)
+
+### Docs
+
+New logo: the LocalSend broadcast-ring motif squared — a NAS box at the
+center of the local network — white on their teal, with README
+attribution to the LocalSend project (© Tien Do Nam, Apache-2.0).
+Favicon re-rendered from it, and a new apple-touch-icon plus its
+`<link>` makes the UI presentable as a mobile home-screen icon. README
+also gained a docker-compose example for Synology/TrueNAS-style hosts.
+
+- docs: LocalSend-style squared logo + apple-touch-icon (`b8f914e`)
+- docs: docker-compose example (`ef7f2c4`)
 
 ## 2026-08-15
 
