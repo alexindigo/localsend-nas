@@ -73,9 +73,10 @@ services:
       # LOCALSEND_NAS_LISTEN: ":8080"   # image default; :80 needs root
       # LOCALSEND_NAS_ALIAS: "Nas living-room"
     volumes:
-      - /srv/movies:/srv/movies:ro    # shares are read-only by design
-      - /srv/books:/srv/books:ro
-      - localsend-nas-data:/data      # persistent device identity
+      # host path : container path  (shares stay read-only inside the container)
+      - /volume1/movies:/srv/movies:ro
+      - /volume1/books:/srv/books:ro
+      - localsend-nas-data:/data      # named volume for the persistent device identity
 
 volumes:
   localsend-nas-data:
