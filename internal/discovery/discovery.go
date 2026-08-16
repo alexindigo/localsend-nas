@@ -164,17 +164,19 @@ func (d *Discovery) Add(ctx context.Context, address string) (*Device, error) {
 	return &cp, nil
 }
 
-// Remove forgets a manual target. Non-manual devices cannot be forgotten
-// (they re-appear via announcements anyway); returns whether removal happened.
+// Remove forgets a device (manual targets are also unpersisted).
+// Note: a still-online discovered device will reappear on its next
+// announcement (~30s); removal is for clearing stale entries.
 func (d *Discovery) Remove(fingerprint string) bool {
 	d.mu.Lock()
-	dev, ok := d.devices[fingerprint]
-	if !ok || !dev.Manual {
-		d.mu.Unlock()
+	_, ok := d.devices[fingerprint]
+	if ok {
+		delete(d.devices, fingerprint)
+	}
+	d.mu.Unlock()
+	if !ok {
 		return false
 	}
-	delete(d.devices, fingerprint)
-	d.mu.Unlock()
 	if err := d.saveTargets(); err != nil {
 		d.log.Warn("persist manual targets", "error", err)
 	}

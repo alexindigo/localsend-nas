@@ -81,6 +81,8 @@ h1 { font-size: 1.1rem; margin: 0; font-weight: 600; }
 }
 .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
 .icon-btn svg { width: 16px; height: 16px; display: block; }
+.icon-btn.remove { padding: 0.1rem 0.35rem; }
+.card-head .icon-btn.remove { margin-left: auto; }
 
 nav button {
   border: 0;

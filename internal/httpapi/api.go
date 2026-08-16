@@ -45,6 +45,7 @@ func New(cfg *config.Config, store *shares.Store, disc *discovery.Discovery, tm 
 	mux.HandleFunc("GET /api/transfers", a.handleTransfers)
 	mux.HandleFunc("GET /api/transfers/{id}/events", a.handleTransferEvents)
 	mux.HandleFunc("POST /api/transfers/{id}/cancel", a.handleCancelTransfer)
+	mux.HandleFunc("DELETE /api/transfers/{id}", a.handleDeleteTransfer)
 	mux.HandleFunc("GET /", a.handleSPA)
 	return mux
 }
@@ -206,13 +207,8 @@ func (a *API) handleAddDevice(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) handleDeleteDevice(w http.ResponseWriter, r *http.Request) {
-	fp := r.PathValue("fingerprint")
-	if _, ok := a.disc.Get(fp); !ok {
+	if !a.disc.Remove(r.PathValue("fingerprint")) {
 		writeError(w, http.StatusNotFound, errors.New("unknown device"))
-		return
-	}
-	if !a.disc.Remove(fp) {
-		writeError(w, http.StatusConflict, errors.New("not a manual target"))
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -251,6 +247,19 @@ func (a *API) handleCancelTransfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleDeleteTransfer removes a terminal job from the list.
+func (a *API) handleDeleteTransfer(w http.ResponseWriter, r *http.Request) {
+	found, removed := a.tm.Forget(r.PathValue("id"))
+	switch {
+	case !found:
+		writeError(w, http.StatusNotFound, errors.New("unknown job"))
+	case !removed:
+		writeError(w, http.StatusConflict, errors.New("job still active — cancel first"))
+	default:
+		w.WriteHeader(http.StatusNoContent)
+	}
 }
 
 // handleTransferEvents streams job snapshots as SSE data frames until the

@@ -235,6 +235,18 @@ $("#chooseDevice").addEventListener("click", () => {
   document.querySelector('#tabs button[data-tab="devices"]').click();
 });
 
+const ICON_X = SVG('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>');
+
+function removeButton(title, onRemove) {
+  const btn = el("button", "icon-btn remove");
+  btn.innerHTML = ICON_X;
+  btn.title = title;
+  btn.addEventListener("click", async () => {
+    try { await onRemove(); } catch (err) { toast(err.message); }
+  });
+  return btn;
+}
+
 // --- devices ----------------------------------------------------------------
 
 // Emoji with default emoji presentation only — ambiguous codepoints
@@ -263,6 +275,10 @@ function renderDevices() {
       el("span", "muted", `${d.ip}:${d.port}`),
     );
     if (d.manual) head.append(el("span", "badge", "manual"));
+    head.append(removeButton("Remove from list", async () => {
+      await api("DELETE", `/api/devices/${d.fingerprint}`);
+      await loadDevices();
+    }));
     li.append(head);
     const meta = el("div", "muted small",
       `${d.deviceModel || "?"} · seen ${fmtTime(d.lastSeen)} · ${d.fingerprint.slice(0, 12)}…`);
@@ -272,16 +288,6 @@ function renderDevices() {
     send.disabled = basketEmpty;
     send.addEventListener("click", () => sendBasket(d));
     actions.append(send);
-    if (d.manual) {
-      const del = el("button", "secondary", "Forget");
-      del.addEventListener("click", async () => {
-        try {
-          await api("DELETE", `/api/devices/${d.fingerprint}`);
-          await loadDevices();
-        } catch (err) { toast(err.message); }
-      });
-      actions.append(del);
-    }
     li.append(actions);
     ul.append(li);
   }
@@ -363,15 +369,20 @@ function renderTransfers() {
       li.append(row);
     }
     if (j.error) li.append(el("div", "error small", j.error));
+    const actionsRow = el("div", "actions");
     if (ACTIVE.has(j.state)) {
       const cancel = el("button", "secondary", "Cancel");
       cancel.addEventListener("click", async () => {
         try { await api("POST", `/api/transfers/${j.id}/cancel`); } catch (err) { toast(err.message); }
       });
-      const actionsDiv = el("div", "actions");
-      actionsDiv.append(cancel);
-      li.append(actionsDiv);
+      actionsRow.append(cancel);
+    } else {
+      actionsRow.append(removeButton("Remove from list", async () => {
+        await api("DELETE", `/api/transfers/${j.id}`);
+        await refreshTransfers();
+      }));
     }
+    li.append(actionsRow);
     ul.append(li);
   }
 }

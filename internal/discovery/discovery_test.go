@@ -62,12 +62,15 @@ func TestUpsertAndEvict(t *testing.T) {
 	if len(got) != 1 || got[0].Info.Fingerprint != "peer2" {
 		t.Fatalf("wrong eviction result: %+v", got)
 	}
-	// Non-manual entries cannot be forgotten.
+	// Any known device can be removed (discovered ones may re-announce).
 	if d.Remove("peer2") != true {
 		t.Fatal("manual remove failed")
 	}
 	d.Upsert(peer, "10.0.0.2")
-	if d.Remove("peer1") != false {
-		t.Fatal("announced device must not be removable")
+	if d.Remove("peer1") != true {
+		t.Fatal("announced device remove failed")
+	}
+	if d.Remove("nonexistent") != false {
+		t.Fatal("removing unknown device must report false")
 	}
 }
