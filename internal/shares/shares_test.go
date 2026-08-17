@@ -155,6 +155,33 @@ func TestOpenDirectoryRejected(t *testing.T) {
 	}
 }
 
+func TestHideEntryFilter(t *testing.T) {
+	st, _ := fixture(t)
+	os.WriteFile(filepath.Join(st.roots["test"], ".DS_Store"), []byte("x"), 0o644)
+	os.MkdirAll(filepath.Join(st.roots["test"], "@eaDir"), 0o755)
+	st.HideEntry = func(name string) bool { return NASNoise(name) }
+	entries, err := st.List("test", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if e.Name == ".DS_Store" || e.Name == "@eaDir" {
+			t.Fatalf("noise entry not filtered: %+v", e)
+		}
+	}
+	st.HideEntry = nil
+	entries, _ = st.List("test", "")
+	found := false
+	for _, e := range entries {
+		if e.Name == ".DS_Store" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("filter disabled but .DS_Store still hidden")
+	}
+}
+
 func TestUnknownShare(t *testing.T) {
 	st, _ := fixture(t)
 	if _, err := st.List("nope", ""); !errors.Is(err, ErrUnknownShare) {

@@ -463,6 +463,7 @@ async function loadSettings() {
     sel.append(o);
   }
   sel.value = state.settings.dropboxShare || "";
+  $("#setNoise").checked = !!state.settings.showNasNoise;
 }
 
 async function saveSettings() {
@@ -470,6 +471,7 @@ async function saveSettings() {
     state.settings = await api("PUT", "/api/settings", {
       acceptTimeoutSec: Math.max(5, Math.min(300, parseInt($("#setTimeout").value, 10) || 30)),
       dropboxShare: $("#setDropbox").value,
+      showNasNoise: $("#setNoise").checked,
     });
   } catch (err) { toast(err.message); }
 }
@@ -485,6 +487,10 @@ document.addEventListener("click", (e) => {
 });
 $("#setTimeout").addEventListener("change", saveSettings);
 $("#setDropbox").addEventListener("change", saveSettings);
+$("#setNoise").addEventListener("change", async () => {
+  await saveSettings();
+  navigate(state.path); // re-render current listing with the new filter
+});
 
 // --- receive modal ----------------------------------------------------------
 

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -66,6 +67,14 @@ func main() {
 	if err != nil {
 		log.Error("settings", "error", err)
 		os.Exit(1)
+	}
+	// Listing filter: receive partials always hidden; NAS metadata hidden
+	// unless enabled in settings.
+	store.HideEntry = func(name string) bool {
+		if strings.HasSuffix(name, ".lnas-part") {
+			return true
+		}
+		return !settingsStore.Get().ShowNasNoise && shares.NASNoise(name)
 	}
 
 	client := localsend.NewClient(id.Cert)

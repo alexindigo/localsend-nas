@@ -35,6 +35,21 @@ type Entry struct {
 // Store holds share roots by name.
 type Store struct {
 	roots map[string]string // name → absolute, symlink-evaluated path
+
+	// HideEntry, when set, excludes matching basenames from List output
+	// (e.g. NAS metadata files, in-flight receive partials).
+	HideEntry func(name string) bool
+}
+
+// NASNoise reports whether name is a well-known NAS/OS metadata entry that
+// clutters listings (@eaDir and #recycle on Synology, .DS_Store/Thumbs.db
+// on macOS/Windows, …).
+func NASNoise(name string) bool {
+	switch name {
+	case "@eaDir", "#recycle", "$RECYCLE.BIN", ".DS_Store", "Thumbs.db", "desktop.ini", ".SynologyWorkingDirectory":
+		return true
+	}
+	return strings.HasPrefix(name, ".Trash-")
 }
 
 // NewStore validates and canonicalizes the roots map (name → path).
@@ -132,6 +147,9 @@ func (s *Store) List(name, rel string) ([]Entry, error) {
 	}
 	entries := make([]Entry, 0, len(des))
 	for _, de := range des {
+		if s.HideEntry != nil && s.HideEntry(de.Name()) {
+			continue
+		}
 		fi, err := de.Info() // lstat semantics: symlinks describe the link itself
 		if err != nil {
 			continue

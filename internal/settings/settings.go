@@ -26,6 +26,10 @@ type Settings struct {
 	// DropboxShare names the share that receives auto-accepted files when
 	// the countdown expires. Empty = dropbox off = timeout rejects.
 	DropboxShare string `json:"dropboxShare"`
+	// ShowNasNoise reveals NAS/OS metadata entries (@eaDir, .DS_Store, …).
+	// Inverted so the zero value means hidden — also on upgraded installs
+	// whose settings.json predates the field.
+	ShowNasNoise bool `json:"showNasNoise"`
 }
 
 type Store struct {
