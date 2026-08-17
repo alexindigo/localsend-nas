@@ -69,6 +69,12 @@ services:
     network_mode: host          # required for multicast discovery
     restart: unless-stopped
     environment:
+      # Your host user's uid/gid (`id` over SSH; Synology default user is
+      # typically 1026:100). Containers ignore DSM ACLs entirely — only
+      # uid/gid matching decides what the app can read. Without a match,
+      # ACL-restricted subdirs will fail to list.
+      PUID: "1026"
+      PGID: "100"
       LOCALSEND_NAS_SHARES: movies=/srv/movies,books=/srv/books
       # LOCALSEND_NAS_LISTEN: ":8080"   # image default; :80 needs root
       # LOCALSEND_NAS_ALIAS: "Nas living-room"
@@ -84,6 +90,12 @@ volumes:
 
 With `network_mode: host` the web UI lands on the host's port 8080
 directly; change `LOCALSEND_NAS_LISTEN` if that clashes.
+
+**Permissions:** the image follows the linuxserver.io `PUID`/`PGID`
+convention — the container starts as root, renumbers the built-in
+`localsend` user, then drops privileges. Defaults are `1000`/`1000`; set
+them to the uid/gid that owns your shares (`id` on the host). The app never
+writes to `:ro` mounts; received files land owned by that uid/gid.
 
 ## Operability (for scripts and monitoring)
 

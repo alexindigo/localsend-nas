@@ -12,13 +12,18 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} \
     -o /out/localsend-nas ./cmd/localsend-nas
 
 FROM alpine:3.21
-RUN adduser -D -H -h /data localsend && mkdir -p /data && chown localsend:localsend /data
+RUN apk add --no-cache shadow su-exec \
+ && adduser -D -H -h /data localsend \
+ && mkdir -p /data && chown localsend:localsend /data
 COPY --from=build /out/localsend-nas /usr/local/bin/localsend-nas
-USER localsend
+COPY entrypoint.sh /entrypoint.sh
+# Container starts as root; the entrypoint renumbers localsend to
+# $PUID/$PGID and drops privileges via su-exec (linuxserver convention).
 # Web UI on :8080 (unprivileged); LocalSend protocol on 53317.
-# Override any of these with flags or LOCALSEND_NAS_* env vars.
 ENV LOCALSEND_NAS_LISTEN=:8080 \
-    LOCALSEND_NAS_DATA_DIR=/data
+    LOCALSEND_NAS_DATA_DIR=/data \
+    PUID=1000 \
+    PGID=1000
 EXPOSE 8080 53317 53317/udp
 VOLUME /data
-ENTRYPOINT ["localsend-nas"]
+ENTRYPOINT ["/entrypoint.sh", "localsend-nas"]
