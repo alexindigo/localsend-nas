@@ -32,8 +32,8 @@ function toast(msg, isError = true) {
   toast._timer = setTimeout(() => (t.hidden = true), 5000);
 }
 
-async function api(method, url, body) {
-  const opts = { method, headers: {} };
+async function api(method, url, body, signal) {
+  const opts = { method, headers: {}, signal };
   if (body !== undefined) {
     opts.headers["Content-Type"] = "application/json";
     opts.body = JSON.stringify(body);
@@ -140,23 +140,72 @@ async function loadShares() {
     o.value = s.name;
     return o;
   }));
-  if (state.shares.length && !state.share) state.share = state.shares[0].name;
+  // Land on the first share that actually lists; a broken mount must not
+  // dead-end the whole page.
+  for (const s of state.shares) {
+    try {
+      await fetchList(s.name, "");
+      state.share = s.name;
+      break;
+    } catch (err) {
+      toast(`Share "${s.name}": ${err.name === "AbortError" ? "unreachable (timeout)" : err.message}`);
+    }
+  }
+  if (!state.share) {
+    sel.value = "";
+    renderListError("no reachable share");
+    return;
+  }
   sel.value = state.share;
   await navigate("");
 }
 
-$("#shareSelect").addEventListener("change", async (e) => {
-  state.share = e.target.value;
-  await navigate("");
-});
+$("#shareSelect").addEventListener("change", (e) => navigate("", e.target.value));
 
 function joinRel(base, name) { return base ? base + "/" + name : name; }
 
-async function navigate(path) {
+// Navigation: fetch-then-commit. state.share/state.path only change after a
+// successful list; failures surface a toast + error row and never desync
+// the tree. A monotonic counter drops stale out-of-order responses.
+let navSeq = 0;
+
+function fetchList(share, path) {
+  const ctl = new AbortController(); // stale mounts can hang ReadDir server-side
+  const t = setTimeout(() => ctl.abort(), 15000);
+  return api("GET", `/api/list?share=${encodeURIComponent(share)}&path=${encodeURIComponent(path)}`, undefined, ctl.signal)
+    .finally(() => clearTimeout(t));
+}
+
+async function navigate(path, share) {
+  const targetShare = share ?? state.share;
+  const seq = ++navSeq;
+  let entries;
+  try {
+    entries = await fetchList(targetShare, path);
+  } catch (err) {
+    if (seq !== navSeq) return;
+    const msg = err.name === "AbortError" ? "share unreachable (timeout)" : err.message;
+    renderListError(msg);
+    toast(`Can't list ${targetShare}:${path || "/"} — ${msg}`);
+    if (share !== undefined) $("#shareSelect").value = state.share; // revert selector
+    return;
+  }
+  if (seq !== navSeq) return;
+  state.share = targetShare;
   state.path = path;
-  const entries = await api("GET", `/api/list?share=${encodeURIComponent(state.share)}&path=${encodeURIComponent(path)}`);
+  $("#shareSelect").value = targetShare;
   renderBreadcrumb();
   renderList(entries || []);
+}
+
+function renderListError(msg) {
+  const tbody = $("#fileList tbody");
+  tbody.replaceChildren();
+  const td = el("td", "error", `⚠ ${msg}`);
+  td.colSpan = 4;
+  const tr = el("tr");
+  tr.append(td);
+  tbody.append(tr);
 }
 
 function renderBreadcrumb() {
@@ -399,6 +448,10 @@ function renderTransfers() {
 // --- settings menu ----------------------------------------------------------
 
 async function loadSettings() {
+  // Self-sufficient: usable even when share listing failed at boot.
+  if (!state.shares.length) {
+    try { state.shares = await api("GET", "/api/shares"); } catch { /* popover just lacks share options */ }
+  }
   state.settings = await api("GET", "/api/settings");
   $("#setTimeout").value = state.settings.acceptTimeoutSec;
   const sel = $("#setDropbox");
@@ -508,10 +561,11 @@ function startGlobalEvents() {
 (async function boot() {
   initTheme();
   renderBasketBar();
-  try {
-    await loadShares();
-    await Promise.all([loadDevices(), refreshTransfers(), loadSettings()]);
-  } catch (err) { toast(err.message); }
+  // Each subsystem loads independently: one failing share must not block
+  // devices, transfers, or settings.
+  try { await loadShares(); } catch (err) { toast(err.message); }
+  const results = await Promise.allSettled([loadDevices(), refreshTransfers(), loadSettings()]);
+  for (const r of results) if (r.status === "rejected") toast(r.reason.message);
   startGlobalEvents();
   setInterval(() => { if (!$("#tab-devices").hidden) loadDevices().catch(() => {}); }, 5000);
   setInterval(() => { if (!$("#tab-transfers").hidden) refreshTransfers().catch(() => {}); }, 3000);
