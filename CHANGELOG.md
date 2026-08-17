@@ -1,5 +1,40 @@
 # Changelog
 
+## 2026-08-16 (post-v0.2.1)
+
+### Fix
+
+Web UI navigation no longer wedges on an unreadable share: a mount that
+fails to list (ACL-denied subdir, stale NFS) now produces a toast and an
+in-table error row with the server's message, the share selector reverts to
+the working share, and boot falls through to the first share that actually
+lists. The same cascade had silently emptied the settings menu's dropbox
+picker — fixed by decoupling settings load from share listing. Listing
+fetches carry a 15 s timeout and stale out-of-order responses are dropped.
+
+- fix: navigation surfaces errors instead of silently wedging (`390a356`)
+
+### Feature
+
+The Docker image follows the linuxserver.io PUID/PGID convention: it starts
+as root, renumbers the built-in `localsend` user to `PUID`/`PGID` (default
+1000/1000), fixes `/data` ownership, and drops privileges via `su-exec`.
+This is the standard answer for Synology/TrueNAS mounts, whose ACLs
+containers otherwise ignore (only uid/gid matching applies). The settings
+menu gained a "show NAS metadata files" toggle; `@eaDir`, `.DS_Store`,
+`#recycle`, and friends are hidden by default, as are in-flight receive
+partials.
+
+- feat: NAS metadata filter (settings toggle) + hide receive partials (`eb4abe7`)
+- feat: PUID/PGID support in Docker image (linuxserver convention) (`be7d439`)
+
+### Docs
+
+Compose example clarifies mount direction with distinct host paths and adds
+PUID/PGID guidance.
+
+- docs: distinct host paths in compose example (mount direction clarity) (`e6c8449`)
+
 ## 2026-08-16 (post-v0.2.0)
 
 ### CI
